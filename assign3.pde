@@ -14,7 +14,6 @@ PImage imgGroundhogIdle, imgGroundhogDown, imgGroundhogLeft, imgGroundhogRight;
 // groundhog
 final int SQUARE_UNIT=80;
 
-
 float soldierSpeed = 2f;
 
 float groundhogX, groundhogY;
@@ -31,13 +30,10 @@ int playerMoveDuration = 15;
 
 boolean demoMode = false;
 
-
 // For debug function; DO NOT edit or remove this!
 int playerHealth = 0;
 float cameraOffsetY = 0;
 boolean debugMode = false;
-
-
 
 void setup() {
 	size(640, 480, P2D);
@@ -215,27 +211,13 @@ void draw() {
 
     PImage groundhogDisplay = imgGroundhogIdle;
 
-    // If player is not moving, we have to decide what player has to do next
     if(playerMoveTimer == 0){
-
-      // HINT:
-      // You can use playerCol and playerRow to get which soil player is currently on
-
-      // Check if "player is NOT at the bottom AND the soil under the player is empty"
-      // > If so, then force moving down by setting playerMoveDirection and playerMoveTimer (see downState part below for example)
-      // > Else then determine player's action based on input state
 
       if(leftState){
 
         groundhogDisplay = imgGroundhogLeft;
 
-        // Check left boundary
         if(playerCol > 0){
-
-          // HINT:
-          // Check if "player is NOT above the ground AND there's soil on the left"
-          // > If so, dig it and decrease its health
-          // > Else then start moving (set playerMoveDirection and playerMoveTimer)
 
           playerMoveDirection = LEFT;
           playerMoveTimer = playerMoveDuration;
@@ -249,11 +231,6 @@ void draw() {
         // Check right boundary
         if(playerCol < 8 - 1){
 
-          // HINT:
-          // Check if "player is NOT above the ground AND there's soil on the right"
-          // > If so, dig it and decrease its health
-          // > Else then start moving (set playerMoveDirection and playerMoveTimer)
-
           playerMoveDirection = RIGHT;
           playerMoveTimer = playerMoveDuration;
 
@@ -265,17 +242,7 @@ void draw() {
 
         // Check bottom boundary
 
-        // HINT:
-        // We have already checked "player is NOT at the bottom AND the soil under the player is empty",
-        // and since we can only get here when the above statement is false,
-        // we only have to check again if "player is NOT at the bottom" to make sure there won't be out-of-bound exception
-        if(playerRow < 24 - 1){
-
-          // > If so, dig it and decrease its health
-
-          // For requirement #3:
-          // Note that player never needs to move down as it will always fall automatically,
-          // so the following 2 lines can be removed once you finish requirement #3
+          if(playerRow < 24 - 1){
 
           playerMoveDirection = DOWN;
           playerMoveTimer = playerMoveDuration;
@@ -286,10 +253,7 @@ void draw() {
 
     }
 
-    // If player is now moving?
-    // (Separated if-else so player can actually move as soon as an action starts)
-    // (I don't think you have to change any of these)
-
+   
     if(playerMoveTimer > 0){
 
       playerMoveTimer --;
@@ -331,11 +295,8 @@ void draw() {
     image(groundhogDisplay, groundhogX, groundhogY);
 
 
-    popMatrix(); // moveY
+    popMatrix();
 
-		// Player
-   // Grounghog move
-     
 		// Health UI
     for(int x=10; x<10+70*playerHealth; x+=70){
       image(life,x,10);
@@ -364,7 +325,6 @@ void draw() {
         playerMoveTimer = 0;
         playerHealth = 2;
 
-				// Remember to initialize the game here!
 			}
 		}else{
 
