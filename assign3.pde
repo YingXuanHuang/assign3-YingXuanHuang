@@ -12,24 +12,32 @@ PImage bg, soil0, soil1, soil2, soil3, soil4, soil5, life, stone1, stone2;
 PImage imgGroundhogIdle, imgGroundhogDown, imgGroundhogLeft, imgGroundhogRight;
 
 // groundhog
-int groundhogX, groundhogY, groundhogSpeed;
 final int SQUARE_UNIT=80;
 
-// moveing
-boolean downPressed=false;
-boolean leftPressed=false;
-boolean rightPressed=false;
 
-// moveY lawn and soil
-int moveY=0;
+float soldierSpeed = 2f;
 
-// grounghog image
-boolean groundhogIdle=true;
+float groundhogX, groundhogY;
+int playerCol, playerRow;
+final float PLAYER_INIT_X = 4 * SQUARE_UNIT;
+final float PLAYER_INIT_Y = - SQUARE_UNIT;
+boolean leftState = false;
+boolean rightState = false;
+boolean downState = false;
+final int PLAYER_MAX_HEALTH = 5;
+int playerMoveDirection = 0;
+int playerMoveTimer = 0;
+int playerMoveDuration = 15;
+
+boolean demoMode = false;
+
 
 // For debug function; DO NOT edit or remove this!
 int playerHealth = 0;
 float cameraOffsetY = 0;
 boolean debugMode = false;
+
+
 
 void setup() {
 	size(640, 480, P2D);
@@ -61,11 +69,14 @@ void setup() {
 
   // life
   playerHealth=2;
-  
-  //groundhog
-  groundhogX=SQUARE_UNIT*4;
-  groundhogY=SQUARE_UNIT;
-  groundhogSpeed+=80/16;  // 15 change 16
+
+  // Initialize player
+  groundhogX = PLAYER_INIT_X;
+  groundhogY = PLAYER_INIT_Y;
+  playerCol = (int) (groundhogX / SQUARE_UNIT);
+  playerRow = (int) (groundhogY / SQUARE_UNIT);
+  playerMoveTimer = 0;
+  playerHealth = 2;
 
 }
 
@@ -120,45 +131,45 @@ void draw() {
    // moveY
    
    pushMatrix();
-   translate(0,moveY);
+   translate(0, max(SQUARE_UNIT * -18, SQUARE_UNIT * 1 - groundhogY));
    
 		// Grass
 		fill(124, 204, 25);
 		noStroke();
-		rect(0, 160 - GRASS_HEIGHT, width, GRASS_HEIGHT);
+		rect(0, -GRASS_HEIGHT, width, GRASS_HEIGHT);
 
 		// Soil 
-		for(int y=160; y<80*6; y+=80){
+		for(int y=0; y<80*4; y+=80){
      for(int x=0; x<width; x+=80){
        image(soil0,x,y);
      }
     }
     
-    for(int y=80*6; y<80*10; y+=80){
+    for(int y=80*4; y<80*8; y+=80){
      for(int x=0; x<width; x+=80){
        image(soil1,x,y);
      }
     }
     
-    for(int y=80*10; y<80*14; y+=80){
+    for(int y=80*8; y<80*12; y+=80){
      for(int x=0; x<width; x+=80){
        image(soil2,x,y);
      }
     }
     
-    for(int y=80*14; y<80*18; y+=80){
+    for(int y=80*12; y<80*16; y+=80){
      for(int x=0; x<width; x+=80){
        image(soil3,x,y);
      }
     }
     
-    for(int y=80*18; y<80*22; y+=80){
+    for(int y=80*16; y<80*20; y+=80){
      for(int x=0; x<width; x+=80){
        image(soil4,x,y);
      }
     }
     
-    for(int y=80*22; y<80*26; y+=80){
+    for(int y=80*20; y<80*24; y+=80){
      for(int x=0; x<width; x+=80){
        image(soil5,x,y);
      }
@@ -166,7 +177,7 @@ void draw() {
 
     // stone
       // one to eight
-      int y1=160;
+      int y1=0;
       for(int x=0; x<width; x+=80){
         image(stone1,x,y1); 
         y1+=80;
@@ -174,8 +185,8 @@ void draw() {
       
       // nine to sixteen 
       for(int x=80; x<width; x+=320){
-        for(int y=80*10; y<80*18; y+=80){
-          if(y==80*11 || y==80*12 || y==80*15 || y==80*16 ){
+        for(int y=80*8; y<80*16; y+=80){
+          if(y==80*9 || y==80*10 || y==80*13 || y==80*14 ){
             image(stone1,x-80,y); 
             image(stone1,x+160,y);
           }else{
@@ -186,110 +197,145 @@ void draw() {
       }
       
       // seventeen to twentyfour
-      for(int x=80; x<width; x+=240){
-        for(int y=80*18; y<80*26; y+=80){               
-          if(y%3==2){
-            image(stone1,x-80,y); 
-            image(stone1,x,y); 
-          }else if(y%3==1){
-            image(stone1,x-160,y); 
-            image(stone1,x-80,y);
-          }else{
-            image(stone1,x,y); 
-            image(stone1,x+80,y); 
-          } // else
+      for(int i=0; i<8; i++){
+      for(int j=0; j<8; j++){
+       if((i+j)%3==1){
+         image(stone1,80*i,(j+16)*80);
+         
+       }
+     if((i+j)%3==2){
+       image(stone1,80*i,(j+16)*80);
+       image(stone2,80*i,(j+16)*80);
+       
+       }
+      }
+     }  
+
+// Groundhog
+
+    PImage groundhogDisplay = imgGroundhogIdle;
+
+    // If player is not moving, we have to decide what player has to do next
+    if(playerMoveTimer == 0){
+
+      // HINT:
+      // You can use playerCol and playerRow to get which soil player is currently on
+
+      // Check if "player is NOT at the bottom AND the soil under the player is empty"
+      // > If so, then force moving down by setting playerMoveDirection and playerMoveTimer (see downState part below for example)
+      // > Else then determine player's action based on input state
+
+      if(leftState){
+
+        groundhogDisplay = imgGroundhogLeft;
+
+        // Check left boundary
+        if(playerCol > 0){
+
+          // HINT:
+          // Check if "player is NOT above the ground AND there's soil on the left"
+          // > If so, dig it and decrease its health
+          // > Else then start moving (set playerMoveDirection and playerMoveTimer)
+
+          playerMoveDirection = LEFT;
+          playerMoveTimer = playerMoveDuration;
+
         }
-      } // for
-      
-      for(int x=0; x<width; x+=240){
-        for(int y=80*18; y<80*26; y+=80){               
-          if(y%3==1){
-            image(stone2,x,y);  
-          }else if(y%3==2){
-            image(stone2,x+80,y); 
-          }else{
-            image(stone2,x+160,y);  
-          } // else
+
+      }else if(rightState){
+
+        groundhogDisplay = imgGroundhogRight;
+
+        // Check right boundary
+        if(playerCol < 8 - 1){
+
+          // HINT:
+          // Check if "player is NOT above the ground AND there's soil on the right"
+          // > If so, dig it and decrease its health
+          // > Else then start moving (set playerMoveDirection and playerMoveTimer)
+
+          playerMoveDirection = RIGHT;
+          playerMoveTimer = playerMoveDuration;
+
         }
-      } // for
+
+      }else if(downState){
+
+        groundhogDisplay = imgGroundhogDown;
+
+        // Check bottom boundary
+
+        // HINT:
+        // We have already checked "player is NOT at the bottom AND the soil under the player is empty",
+        // and since we can only get here when the above statement is false,
+        // we only have to check again if "player is NOT at the bottom" to make sure there won't be out-of-bound exception
+        if(playerRow < 24 - 1){
+
+          // > If so, dig it and decrease its health
+
+          // For requirement #3:
+          // Note that player never needs to move down as it will always fall automatically,
+          // so the following 2 lines can be removed once you finish requirement #3
+
+          playerMoveDirection = DOWN;
+          playerMoveTimer = playerMoveDuration;
+
+
+        }
+      }
+
+    }
+
+    // If player is now moving?
+    // (Separated if-else so player can actually move as soon as an action starts)
+    // (I don't think you have to change any of these)
+
+    if(playerMoveTimer > 0){
+
+      playerMoveTimer --;
+      switch(playerMoveDirection){
+
+        case LEFT:
+        groundhogDisplay = imgGroundhogLeft;
+        if(playerMoveTimer == 0){
+          playerCol--;
+          groundhogX = SQUARE_UNIT * playerCol;
+        }else{
+          groundhogX = (float(playerMoveTimer) / playerMoveDuration + playerCol - 1) * SQUARE_UNIT;
+        }
+        break;
+
+        case RIGHT:
+        groundhogDisplay = imgGroundhogRight;
+        if(playerMoveTimer == 0){
+          playerCol++;
+          groundhogX = SQUARE_UNIT * playerCol;
+        }else{
+          groundhogX = (1f - float(playerMoveTimer) / playerMoveDuration + playerCol) * SQUARE_UNIT;
+        }
+        break;
+
+        case DOWN:
+        groundhogDisplay = imgGroundhogDown;
+        if(playerMoveTimer == 0){
+          playerRow++;
+          groundhogY = SQUARE_UNIT * playerRow;
+        }else{
+          groundhogY = (1f - float(playerMoveTimer) / playerMoveDuration + playerRow) * SQUARE_UNIT;
+        }
+        break;
+      }
+
+    }
+
+    image(groundhogDisplay, groundhogX, groundhogY);
+
 
     popMatrix(); // moveY
 
 		// Player
    // Grounghog move
-      
-      if(groundhogIdle){
-        
-        if(moveY>-80*20){
-          groundhogY=80;
-          image(imgGroundhogIdle,groundhogX,groundhogY);
-        }else{
-           image(imgGroundhogIdle,groundhogX,groundhogY); 
-        }
-      }
-      
-      if(downPressed){
-        groundhogIdle=false;
-        leftPressed= false;
-        rightPressed= false;
-        groundhogY+=groundhogSpeed;
-        if(moveY>-80*20){
-          image(imgGroundhogDown,groundhogX,80);
-            moveY-=80/16;
-          }else{
-             moveY=-80*20;
-             image(imgGroundhogDown,groundhogX,groundhogY);
-          }
-
-        if(groundhogY%80==0){
-          downPressed= false;
-          groundhogIdle=true;
-          }
-      }
-      if(leftPressed){
-        groundhogIdle=false;
-        image(imgGroundhogLeft,groundhogX,groundhogY);
-        downPressed= false;
-        rightPressed= false;
-        groundhogX-=groundhogSpeed;
-        if(groundhogX%80==0){
-          leftPressed= false;
-          groundhogIdle=true;
-          }
-      }
-      if(rightPressed){
-        groundhogIdle=false;
-        image(imgGroundhogRight,groundhogX,groundhogY);
-        leftPressed= false;
-        downPressed= false;
-        groundhogX+=groundhogSpeed;
-        if(groundhogX%80==0){
-          rightPressed= false;
-          groundhogIdle=true;
-          }
-      }
-      
-      // Grounghog boundary detection
-      if(groundhogX<0){
-        leftPressed= false;
-        groundhogIdle=true;
-        groundhogX=0;
-      }
-      if(groundhogX>width-SQUARE_UNIT){
-        rightPressed= false;
-        groundhogIdle=true;
-        groundhogX=width-SQUARE_UNIT;
-      }
-      if(groundhogY>=height-80){
-        downPressed= false;
-        if(downPressed==true || leftPressed==true || rightPressed==true){
-          groundhogIdle=false;
-        }else{
-          groundhogIdle=true;
-        }
-        groundhogY=height-80;
-      }
-
+     
 		// Health UI
     for(int x=10; x<10+70*playerHealth; x+=70){
       image(life,x,10);
@@ -309,6 +355,15 @@ void draw() {
 			if(mousePressed){
 				gameState = GAME_RUN;
 				mousePressed = false;
+
+// Initialize player
+        groundhogX = PLAYER_INIT_X;
+        groundhogY = PLAYER_INIT_Y;
+        playerCol = (int) (groundhogX / SQUARE_UNIT);
+        playerRow = (int) (groundhogY / SQUARE_UNIT);
+        playerMoveTimer = 0;
+        playerHealth = 2;
+
 				// Remember to initialize the game here!
 			}
 		}else{
@@ -327,18 +382,22 @@ void draw() {
 }
 
 void keyPressed(){
-	// Add your moving input code here
-   if (key == CODED) {
-    switch (keyCode) {
-      case DOWN:
-        downPressed = true;
-        break;
+  if(key==CODED){
+    switch(keyCode){
       case LEFT:
-        leftPressed = true;
-        break;
+      leftState = true;
+      break;
       case RIGHT:
-        rightPressed = true;
-        break;
+      rightState = true;
+      break;
+      case DOWN:
+      downState = true;
+      break;
+    }
+  }else{
+    if(key=='b'){
+      // Press B to toggle demo mode
+      demoMode = !demoMode;
     }
   }
 
@@ -365,4 +424,19 @@ void keyPressed(){
 }
 
 void keyReleased(){
+  
+  if(key==CODED){
+    switch(keyCode){
+      case LEFT:
+      leftState = false;
+      break;
+      case RIGHT:
+      rightState = false;
+      break;
+      case DOWN:
+      downState = false;
+      break;
+    }
+  }
+  
 }
